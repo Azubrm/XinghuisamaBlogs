@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isStaticExport, withBasePath } from '../lib/deployment';
 
 export default function CyberCat() {
   const [isPetted, setIsPetted] = useState(false);
@@ -37,11 +38,15 @@ export default function CyberCat() {
     if (isThinking) return;
 
     setShowInput(false); // 喂食时关掉输入框
+    if (isStaticExport) {
+      speak("吧唧吧唧... 谢谢小鱼干！本喵吃饱啦，喵~", 6000);
+      return;
+    }
     setIsThinking(true);
     speak("嗷呜！真好吃喵！本喵吃饱了要说两句...", 6000);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(withBasePath('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: "我刚刚喂了你一条美味的小鱼干！你有什么表示？" }),
@@ -61,7 +66,7 @@ export default function CyberCat() {
   // --- 💬 交互事件：发送聊天 ---
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isThinking) return;
+    if (isStaticExport || !inputValue.trim() || isThinking) return;
 
     const userMessage = inputValue;
     setInputValue('');
@@ -70,7 +75,7 @@ export default function CyberCat() {
     speak("让本喵想想喵...", 10000);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(withBasePath('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage }),
@@ -140,6 +145,7 @@ export default function CyberCat() {
         <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
 
             {/* 💬 聊天按钮 */}
+            {!isStaticExport && (
             <button
               onClick={(e) => {
                  e.stopPropagation();
@@ -153,6 +159,7 @@ export default function CyberCat() {
                 <path fillRule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clipRule="evenodd" />
               </svg>
             </button>
+            )}
 
             {/* 🐟 喂食按钮 */}
             <button
@@ -174,7 +181,7 @@ export default function CyberCat() {
             .cat-sprite {
               width: 100%;
               height: 100%;
-              background-image: url('/siamese-cat.png'); 
+              background-image: url('${withBasePath('/siamese-cat.png')}');
               background-size: 300% 300%; 
               background-repeat: no-repeat;
               image-rendering: pixelated; 
@@ -207,7 +214,7 @@ export default function CyberCat() {
 
       {/* ⌨️ 互动输入框 */}
       <AnimatePresence>
-        {showInput && (
+        {!isStaticExport && showInput && (
           <motion.form
             initial={{ opacity: 0, y: -10, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}

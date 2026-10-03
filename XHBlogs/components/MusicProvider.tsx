@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 import { siteConfig } from '../siteConfig';
+import { isStaticExport, withBasePath } from '../lib/deployment';
 
 // 【增强版 LRC 歌词解析】
 function parseLrc(lrcText: string) {
@@ -84,8 +85,13 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     const fetchMusicData = async () => {
       try {
-        const res = await fetch(`/api/music?ids=${siteConfig.cloudMusicIds.join(',')}`);
+        const musicUrl = isStaticExport
+          ? withBasePath('/music.json')
+          : withBasePath(`/api/music?ids=${siteConfig.cloudMusicIds.join(',')}`);
+        const res = await fetch(musicUrl);
+        if (!res.ok) throw new Error(`Music request failed: ${res.status}`);
         const rawResults = await res.json();
+        if (!Array.isArray(rawResults)) throw new Error('Invalid music playlist');
 
         const mergedPlaylist = rawResults
           .filter((song: any) => song && song.url && !song.error)

@@ -6,6 +6,7 @@ import 'gitalk/dist/gitalk.css';
 import Gitalk from 'gitalk';
 
 import { siteConfig } from '../siteConfig';
+import { isStaticExport, withBasePath } from '../lib/deployment';
 
 // 🌟 专门为炼金实验室定制的 Gitalk 组件，不影响原有的 Comments.tsx
 export default function LabComments({ pageId }: { pageId?: string }) {
@@ -13,7 +14,7 @@ export default function LabComments({ pageId }: { pageId?: string }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (isStaticExport || !containerRef.current) return;
 
     // 清空之前的评论区，防止切换月份时叠加
     containerRef.current.innerHTML = '';
@@ -27,7 +28,7 @@ export default function LabComments({ pageId }: { pageId?: string }) {
       repo: siteConfig.gitalkConfig.repo,
       owner: siteConfig.gitalkConfig.owner,
       admin: siteConfig.gitalkConfig.admin,
-      proxy: '/api/github',
+      proxy: withBasePath('/api/github'),
       id: finalId, // 这里的 ID 决定了留言板对应 GitHub 的哪个 Issue
       distractionFreeMode: false,
     });
@@ -42,6 +43,14 @@ export default function LabComments({ pageId }: { pageId?: string }) {
     }
 
   }, [pathname, pageId]);
+
+  if (isStaticExport) {
+    return (
+      <div className="w-full mt-16 pt-6 border-t border-slate-200/50 dark:border-slate-700/50 text-center text-sm text-slate-500 dark:text-slate-400">
+        留言功能暂未开通。
+      </div>
+    );
+  }
 
   return (
     <div className="w-full mt-16 relative">

@@ -7,13 +7,14 @@ import Gitalk from 'gitalk';
 
 // 🌟 引入全局配置，读取你的 GitHub OAuth 凭证
 import { siteConfig } from '../siteConfig'; // 如果路径报错，请检查层级是否需要改成 '../../siteConfig'
+import { isStaticExport, withBasePath } from '../lib/deployment';
 
 export default function Comments() {
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (isStaticExport || !containerRef.current) return;
 
     // 清空之前的评论区（防止 Next.js 路由切换时重复渲染）
     containerRef.current.innerHTML = '';
@@ -26,7 +27,7 @@ export default function Comments() {
       admin: siteConfig.gitalkConfig.admin,
 
       // 👇 指向我们自己的同源 API，彻底告别跨域和第三方拦截！
-      proxy: '/api/github',
+      proxy: withBasePath('/api/github'),
 
       id: (pathname.replace(/\/$/, '') || '/').substring(0, 49),
       distractionFreeMode: false,
@@ -43,6 +44,14 @@ export default function Comments() {
     }
 
   }, [pathname]);
+
+  if (isStaticExport) {
+    return (
+      <div className="w-full mt-16 pt-6 border-t border-slate-200/50 dark:border-slate-700/50 text-center text-sm text-slate-500 dark:text-slate-400">
+        留言功能暂未开通。
+      </div>
+    );
+  }
 
   return (
     <div className="w-full mt-16 relative">

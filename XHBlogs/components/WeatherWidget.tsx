@@ -3,15 +3,23 @@
 
 import { useState, useEffect } from 'react';
 import { Cloud, Sun, CloudRain, Snowflake, CloudLightning, Loader2, Wind } from 'lucide-react';
+import { isStaticExport, withBasePath } from '../lib/deployment';
 
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<{ city: string; temp: number; text: string; icon: string; isMock: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isStaticExport) {
+      setWeather({ city: "北京市", temp: 22, text: "气候模拟", icon: "101", isMock: true });
+      setLoading(false);
+      return;
+    }
+
     const fetchWeather = async () => {
       try {
-        const res = await fetch('/api/weather');
+        const res = await fetch(withBasePath('/api/weather'));
+        if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
         const data = await res.json();
 
         // 🌟 按照和风 V7 文档结构解析：数据在 data.now 中

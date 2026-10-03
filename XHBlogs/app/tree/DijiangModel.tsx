@@ -11,6 +11,7 @@ import { Float, Html } from '@react-three/drei';
 
 import LabComments from '../../components/LabComments';
 import { siteConfig } from '../../siteConfig';
+import { withBasePath } from '../../lib/deployment';
 
 import { albums } from '../../data/albums';
 import { friendsData } from '../../data/friends';
@@ -242,7 +243,7 @@ const DijiangParticleModel = () => {
     let isMounted = true;
 
     // 如果你改了 bin 文件的名字，请在这里修改请求路径，例如： fetch('/12345.bin')
-    fetch('/spaceship.bin')
+    fetch(withBasePath('/spaceship.bin'))
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch spaceship.bin");
         return res.arrayBuffer();

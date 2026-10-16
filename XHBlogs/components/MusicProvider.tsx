@@ -47,6 +47,9 @@ interface MusicContextType {
   duration: number;
   currentLyric: string;
   isLoading: boolean;
+  loadError: string | null;
+  playbackError: string | null;
+  retryMusic: () => void;
   volume: number;
   isMuted: boolean;
   playMode: PlayMode;
@@ -73,6 +76,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [lyrics, setLyrics] = useState<{ time: number; text: string }[]>([]);
   const [currentLyric, setCurrentLyric] = useState("正在连接高可用神经云端...");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   // 🌟 2. 新增音量和播放模式状态
   const [volume, setVolumeState] = useState(1);
@@ -83,15 +89,33 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+    let timedOut = false;
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    setIsLoading(true);
+    setLoadError(null);
+
     const fetchMusicData = async () => {
       try {
+        if (!Array.isArray(siteConfig.cloudMusicIds)) {
+          throw new Error('播放列表配置有误，请在后台重新保存音乐播放设置。');
+        }
+        if (siteConfig.cloudMusicIds.length === 0) {
+          setPlaylist([]);
+          setCurrentLyric('暂无歌曲');
+          return;
+        }
+        timeout = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, 20000);
         const musicUrl = isStaticExport
           ? withBasePath('/music.json')
-          : withBasePath(`/api/music?ids=${siteConfig.cloudMusicIds.join(',')}`);
-        const res = await fetch(musicUrl);
-        if (!res.ok) throw new Error(`Music request failed: ${res.status}`);
+          : withBasePath(`/api/music?ids=${encodeURIComponent(siteConfig.cloudMusicIds.join(','))}`);
+        const res = await fetch(musicUrl, { signal: controller.signal });
+        if (!res.ok) throw new Error('音乐服务暂时不可用，请稍后重试。');
         const rawResults = await res.json();
-        if (!Array.isArray(rawResults)) throw new Error('Invalid music playlist');
+        if (!Array.isArray(rawResults)) throw new Error('音乐服务返回了无效的歌单数据，请稍后重试。');
 
         const mergedPlaylist = rawResults
           .filter((song: any) => song && song.url && !song.error)
@@ -101,30 +125,62 @@ export function MusicProvider({ children }: { children: ReactNode }) {
             artist: song.artist || song.author || '未知歌手',
             cover: song.cover || song.pic || 'https://bu.dusays.com/2026/03/24/69c24230a5ff8.jpg',
             src: song.url,
+            warning: song.warning || (song.metadataUnavailable ? '歌曲信息服务暂时受限，暂时无法显示完整歌名和歌词。' : null),
             lrcUrl: null,
             lyrics: song.lrc ? parseLrc(song.lrc) : []
           }));
 
         if (isMounted) {
-          if (mergedPlaylist.length > 0) setPlaylist(mergedPlaylist);
-          else setCurrentLyric("云端链路受阻");
-          setIsLoading(false);
+          setPlaylist(mergedPlaylist);
+          setCurrentIndex(0);
+          setIsPlaying(false);
+          setPlaybackError(null);
+          if (mergedPlaylist.length === 0) {
+            const reportedReason = rawResults.find((song: any) => typeof song?.message === 'string' && song.message.trim())?.message;
+            const reason = reportedReason || '暂时无法获取歌曲信息，音乐服务可能受限，请稍后重试。';
+            setLoadError(reason);
+            setCurrentLyric(reason);
+          }
         }
       } catch (error) {
-        if (isMounted) { setCurrentLyric("网络初始化失败"); setIsLoading(false); }
+        if (isMounted) {
+          const reason = timedOut
+            ? '加载歌单超时，请检查网络后重试。'
+            : error instanceof TypeError
+              ? '无法连接音乐服务，请检查网络后重试。'
+              : error instanceof SyntaxError
+                ? '音乐服务返回了无效的歌单数据，请稍后重试。'
+                : error instanceof Error ? error.message : '歌单加载失败，请稍后重试。';
+          setLoadError(reason);
+          setCurrentLyric(reason);
+        }
+      } finally {
+        if (timeout) clearTimeout(timeout);
+        if (isMounted) setIsLoading(false);
       }
     };
 
-    if (siteConfig.cloudMusicIds?.length > 0) fetchMusicData();
-    else setIsLoading(false);
+    fetchMusicData();
 
-    return () => { isMounted = false; };
-  }, []);
+    return () => {
+      isMounted = false;
+      if (timeout) clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [loadAttempt]);
+
+  const retryMusic = () => setLoadAttempt(attempt => attempt + 1);
+
+  const handlePlaybackError = () => {
+    setIsPlaying(false);
+    setPlaybackError('这首歌曲暂时无法播放，可能受版权或网络限制，请尝试下一首。');
+  };
 
   useEffect(() => {
-    if (playlist.length === 0) return;
-    let isMounted = true;
     const currentSong = playlist[currentIndex];
+    if (!currentSong) return;
+    let isMounted = true;
+    setPlaybackError(null);
     setLyrics([]);
     setCurrentLyric("♪ 正在缓冲 ♪");
     if (currentSong.lyrics && currentSong.lyrics.length > 0) {
@@ -147,12 +203,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           }
         })
         .catch(() => { if (isMounted) setCurrentLyric("\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a"); });
+    } else {
+      setCurrentLyric('♪ 纯享音乐 · 歌词暂不可用 ♪');
     }
 
     if (isPlaying && audioRef.current) {
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
-        playPromise.catch(() => setIsPlaying(false));
+        playPromise.catch(() => { if (isMounted) handlePlaybackError(); });
       }
     }
     return () => { isMounted = false; };
@@ -167,14 +225,16 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const togglePlay = () => {
     if (audioRef.current) {
+      setPlaybackError(null);
       if (isPlaying) audioRef.current.pause();
-      else audioRef.current.play().catch(() => setIsPlaying(false));
+      else audioRef.current.play().catch(handlePlaybackError);
       setIsPlaying(!isPlaying);
     }
   };
 
   // 🌟 5. 重写 nextSong，加入对随机模式的处理
   const nextSong = () => {
+    if (playlist.length === 0) return;
     if (playMode === 'random') {
       setCurrentIndex(Math.floor(Math.random() * playlist.length));
     } else {
@@ -183,6 +243,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   };
 
   const prevSong = () => {
+    if (playlist.length === 0) return;
     if (playMode === 'random') {
       setCurrentIndex(Math.floor(Math.random() * playlist.length));
     } else {
@@ -192,6 +253,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 🌟 6. 暴露直接播放指定歌曲的方法
   const playSong = (index: number) => {
+    if (!playlist[index]) return;
+    if (index === currentIndex && audioRef.current) {
+      setPlaybackError(null);
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(handlePlaybackError);
+      return;
+    }
     setCurrentIndex(index);
     if (!isPlaying) setIsPlaying(true); // 保证切歌后自动播放
   };
@@ -216,7 +283,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const handleEnded = () => {
     if (playMode === 'single' && audioRef.current) {
        audioRef.current.currentTime = 0;
-       audioRef.current.play();
+       audioRef.current.play().catch(handlePlaybackError);
     } else {
        nextSong();
     }
@@ -250,6 +317,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   return (
     <MusicContext.Provider value={{
         playlist, currentIndex, currentSong, isPlaying, progress, currentTime, duration, currentLyric, isLoading,
+        loadError, playbackError, retryMusic,
         volume, isMuted, playMode, // 暴露新状态
         togglePlay, nextSong, prevSong, handleSeek,
         playSong, setVolume, toggleMute, togglePlayMode // 暴露新方法
@@ -262,6 +330,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded} // 使用我们重写的结束处理
           onLoadedMetadata={handleTimeUpdate}
+          onError={handlePlaybackError}
+          onPlay={() => { setIsPlaying(true); setPlaybackError(null); }}
+          onPause={() => setIsPlaying(false)}
         />
       )}
     </MusicContext.Provider>

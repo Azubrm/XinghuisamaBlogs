@@ -11,8 +11,8 @@ import Comments from '../../components/Comments';
 export default function MusicClient() {
   const {
     playlist, currentSong, isPlaying, progress, currentTime, duration, currentLyric,
-    isLoading, togglePlay, nextSong, prevSong, handleSeek,
-    playSong, selectSong,
+    isLoading, loadError, playbackError, retryMusic, togglePlay, nextSong, prevSong, handleSeek,
+    playSong,
     playMode, togglePlayMode,
     volume, setVolume, isMuted, toggleMute
   } = useMusic();
@@ -102,8 +102,7 @@ export default function MusicClient() {
   };
 
   const handlePlaySong = (index: number) => {
-    if (typeof playSong === 'function') playSong(index);
-    else if (typeof selectSong === 'function') selectSong(index);
+    playSong(index);
   };
 
   const filteredPlaylist = useMemo(() => {
@@ -115,13 +114,31 @@ export default function MusicClient() {
     );
   }, [playlist, searchQuery]);
 
-  if (isLoading || !currentSong) {
+  if (isLoading) {
     return (
       <div className="min-h-screen relative pb-32 flex flex-col">
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center animate-pulse gap-4">
           <Disc3 size={48} className="text-indigo-500 animate-spin" />
           <span className="font-black text-slate-500 tracking-widest text-sm">唤醒音频引擎中...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentSong) {
+    return (
+      <div className="min-h-screen relative pb-32 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center px-6 pt-24">
+          <div className="w-full max-w-lg rounded-[32px] bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-white/40 dark:border-slate-700/50 shadow-xl p-8 md:p-12 flex flex-col items-center text-center gap-5" role={loadError ? 'alert' : 'status'}>
+            <Disc3 size={48} className="text-indigo-500" />
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{loadError ? '歌单暂时无法加载' : '暂无歌曲'}</h1>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{loadError || '博主还没有添加歌曲，稍后再来听听吧。'}</p>
+            <button onClick={retryMusic} className="inline-flex items-center gap-2 rounded-2xl bg-indigo-500 px-6 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 transition-colors">
+              <RefreshCcw size={16} /> 重新加载歌单
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -144,6 +161,17 @@ export default function MusicClient() {
             <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-widest mb-1 md:mb-2 transition-colors duration-700">云端乐律</h1>
             <p className="text-xs md:text-base text-slate-600 dark:text-slate-400 font-medium tracking-wider transition-colors duration-700">在代码的缝隙中寻找灵魂的共鸣</p>
           </div>
+
+          {currentSong.warning && !playbackError && (
+            <p role="status" className="mb-6 rounded-2xl border border-amber-300/30 bg-amber-50/60 dark:bg-amber-900/20 px-5 py-3 text-sm text-amber-900 dark:text-amber-100">{currentSong.warning}</p>
+          )}
+
+          {playbackError && (
+            <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/30 bg-amber-100/70 dark:bg-amber-900/30 px-5 py-4 text-sm text-amber-900 dark:text-amber-100">
+              <p>{playbackError}</p>
+              <button onClick={nextSong} className="font-bold underline underline-offset-4">试试下一首</button>
+            </div>
+          )}
 
           <div className="flex flex-col md:grid md:grid-cols-12 gap-6 md:gap-8 w-full md:items-stretch md:h-[calc(100vh-320px)] md:min-h-[600px] md:max-h-[720px]">
 
@@ -175,11 +203,11 @@ export default function MusicClient() {
                 <div className="w-full flex items-center justify-between px-1 md:px-2 lg:px-4">
                   <button onClick={togglePlayMode} className="p-2 transition-transform hover:scale-110">{getPlayModeIcon()}</button>
                   <div className="flex items-center gap-3 md:gap-4 lg:gap-6">
-                    <button onClick={prevSong} className="p-2 text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-transform hover:scale-110"><SkipBack size={24} className="md:w-7 md:h-7" fill="currentColor" /></button>
-                    <button onClick={togglePlay} className="w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 flex items-center justify-center bg-indigo-500 text-white rounded-full hover:scale-105 shadow-xl shadow-indigo-500/40">
+                    <button onClick={prevSong} aria-label="上一首" className="p-2 text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-transform hover:scale-110"><SkipBack size={24} className="md:w-7 md:h-7" fill="currentColor" /></button>
+                    <button onClick={togglePlay} aria-label={isPlaying ? '暂停' : '播放'} className="w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 flex items-center justify-center bg-indigo-500 text-white rounded-full hover:scale-105 shadow-xl shadow-indigo-500/40">
                       {isPlaying ? <Pause size={28} className="md:w-8 md:h-8" fill="currentColor" /> : <Play size={28} className="md:w-8 md:h-8 ml-1" fill="currentColor" />}
                     </button>
-                    <button onClick={nextSong} className="p-2 text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-transform hover:scale-110"><SkipForward size={24} className="md:w-7 md:h-7" fill="currentColor" /></button>
+                    <button onClick={nextSong} aria-label="下一首" className="p-2 text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-transform hover:scale-110"><SkipForward size={24} className="md:w-7 md:h-7" fill="currentColor" /></button>
                   </div>
                   <div className="flex items-center" onMouseLeave={() => setShowVolumeSlider(false)}>
                     <AnimatePresence>

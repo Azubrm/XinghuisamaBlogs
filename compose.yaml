@@ -1,0 +1,18 @@
+name: xhblogs
+
+services:
+  blog:
+    image: xhblogs:local
+    build:
+      context: ./XHBlogs
+    container_name: xhblogs
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:3020:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      QWEATHER_KEY: "${QWEATHER_KEY:-}"

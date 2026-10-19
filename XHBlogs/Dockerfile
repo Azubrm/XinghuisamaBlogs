@@ -1,4 +1,5 @@
-FROM node:22-bookworm-slim
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22-bookworm-slim
+FROM ${NODE_IMAGE}
 
 WORKDIR /app
 

@@ -5,6 +5,8 @@ services:
     image: xhblogs:local
     build:
       context: ./XHBlogs
+      args:
+        NODE_IMAGE: "${NODE_IMAGE:-public.ecr.aws/docker/library/node:22-bookworm-slim}"
     container_name: xhblogs
     restart: unless-stopped
     init: true

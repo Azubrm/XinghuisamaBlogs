@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import 'gitalk/dist/gitalk.css';
-import Gitalk from 'gitalk';
+import { renderGitalk } from '../lib/render-gitalk';
 
 import { siteConfig } from '../siteConfig';
 import { isStaticExport, withBasePath } from '../lib/deployment';
@@ -22,18 +22,16 @@ export default function LabComments({ pageId }: { pageId?: string }) {
     // 优先使用传入的 pageId (如 workshop-2026-05)
     const finalId = (pageId || pathname.replace(/\/$/, '') || '/').substring(0, 49);
 
-    const gitalk = new Gitalk({
+    renderGitalk({
       clientID: siteConfig.gitalkConfig.clientID,
-      clientSecret: siteConfig.gitalkConfig.clientSecret,
+      clientSecret: '',
       repo: siteConfig.gitalkConfig.repo,
       owner: siteConfig.gitalkConfig.owner,
       admin: siteConfig.gitalkConfig.admin,
       proxy: withBasePath('/api/github'),
       id: finalId, // 这里的 ID 决定了留言板对应 GitHub 的哪个 Issue
       distractionFreeMode: false,
-    });
-
-    gitalk.render(containerRef.current);
+    }, containerRef.current);
 
     // 擦除 URL 中的 OAuth 凭证，防止刷新报错
     const url = new URL(window.location.href);

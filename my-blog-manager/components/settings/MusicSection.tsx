@@ -38,13 +38,16 @@ export default function MusicSection({ formData, handleUpdate, pushToQueue, musi
         </div>
 
         <div className="bg-slate-100/50 dark:bg-slate-800/50 rounded-3xl p-6 space-y-6">
-          <p className="text-[10px] font-black text-slate-400 uppercase">校验并添加新 ID</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase">校验并添加歌曲</p>
           <div className="flex gap-2">
-            <input type="text" placeholder="输入歌曲 ID" value={formData.newMusicId} onChange={e => handleUpdate('newMusicId', e.target.value)} className="flex-1 bg-white dark:bg-slate-900 border-none rounded-2xl px-4 py-3 text-sm outline-none shadow-sm" />
+            <input type="text" aria-label="歌曲 ID 或网易云歌曲链接" placeholder="歌曲 ID 或网易云歌曲链接" value={formData.newMusicId} onChange={e => handleUpdate('newMusicId', e.target.value)} className="min-w-0 flex-1 bg-white dark:bg-slate-900 border-none rounded-2xl px-4 py-3 text-sm outline-none shadow-sm" />
             <button onClick={queryMusic} disabled={queryLoading} className="px-6 py-3 bg-pink-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-pink-500/20 disabled:opacity-50">
               {queryLoading ? "请求中..." : "真实查询"}
             </button>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            支持直接粘贴网易云歌曲链接，会自动提取歌曲 ID 并忽略分享参数。
+          </p>
 
           <AnimatePresence>
             {queryResult && !queryResult.error && (

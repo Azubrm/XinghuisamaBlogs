@@ -1,6 +1,7 @@
 import os
 import shutil
 from fastapi import APIRouter, Request
+from cms_core.site_config import parse_site_config, replace_config_fields
 
 router = APIRouter()
 
@@ -84,7 +85,12 @@ async def execute_sync(request: Request):
                 # 🌟 核心过滤逻辑：如果是 siteConfig.ts，拦截并剔除敏感信息
                 if f == "siteConfig.ts":
                     with open(src_file, "r", encoding="utf-8") as file_in:
-                        lines = file_in.readlines()
+                        content = file_in.read()
+                    parsed, _ = parse_site_config(content)
+                    gitalk = parsed.get("gitalkConfig")
+                    if isinstance(gitalk, dict):
+                        content = replace_config_fields(content, {"gitalkConfig": {**gitalk, "clientSecret": ""}}, {"gitalkConfig"})
+                    lines = content.splitlines(keepends=True)
 
                     with open(dst_file, "w", encoding="utf-8") as file_out:
                         for line in lines:

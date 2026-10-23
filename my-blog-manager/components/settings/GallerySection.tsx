@@ -37,7 +37,7 @@ export default function GallerySection({ formData, handleUpdate, pushToQueue }: 
       if (data.success) {
         showToast("✅ 测试通过！图床已就绪", "success");
       } else {
-        showToast("❌ Token 无效或服务异常", "error");
+        showToast("图床校验未通过，请查看下方的具体原因", "error");
       }
     } catch (error) {
       showToast("无法连接到本地 Python 引擎", "error");
@@ -75,14 +75,17 @@ export default function GallerySection({ formData, handleUpdate, pushToQueue }: 
 
         {/* 👈 新增：彻底解耦的 API 地址输入框 */}
         <div>
-          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">API 接口地址 (URL)</label>
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">图床站点或 API 根地址 (URL)</label>
           <input
             type="text"
-            placeholder="例如: https://pic.dusays.com"
+            placeholder="例如: https://7bu.top/api/v1"
             value={formData.picBedUrl || ''}
             onChange={e => handleUpdate('picBedUrl', e.target.value)}
             className="w-full bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm outline-none mt-1 text-slate-700 dark:text-slate-200"
           />
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 ml-1 leading-relaxed">
+            可填写 https://7bu.top 或 https://7bu.top/api/v1，系统会自动补全校验和上传接口。
+          </p>
         </div>
 
         <div>

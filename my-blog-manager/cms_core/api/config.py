@@ -38,6 +38,9 @@ def get_site_config():
     try:
         with open(config_path, "r", encoding="utf-8", newline="") as source:
             parsed_config, _ = parse_site_config(source.read())
+        gitalk = parsed_config.get("gitalkConfig")
+        if isinstance(gitalk, dict):
+            parsed_config["gitalkConfig"] = {**gitalk, "clientSecret": ""}
         return {"success": True, "data": parsed_config}
     except Exception as error:
         return {"success": False, "message": f"解析失败: {error}"}
@@ -57,8 +60,13 @@ def update_site_config(payload: Dict[str, Any] = Body(...)):
         # Preserve the legacy form's single-admin shorthand without editing input.
         updates = dict(updates)
         gitalk = updates.get("gitalkConfig")
-        if isinstance(gitalk, dict) and isinstance(gitalk.get("admin"), str):
-            updates["gitalkConfig"] = {**gitalk, "admin": [gitalk["admin"]]}
+        if isinstance(gitalk, dict):
+            if gitalk.get("clientSecret"):
+                return {"success": False, "message": "请在评论设置中使用“保存密钥到本机”，密钥不能写入公开配置"}
+            gitalk = {**gitalk, "clientSecret": ""}
+            if isinstance(gitalk.get("admin"), str):
+                gitalk["admin"] = [gitalk["admin"]]
+            updates["gitalkConfig"] = gitalk
         with _config_lock:
             with open(config_path, "r", encoding="utf-8", newline="") as source:
                 content = source.read()

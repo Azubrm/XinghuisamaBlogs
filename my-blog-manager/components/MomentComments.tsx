@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import 'gitalk/dist/gitalk.css';
-import Gitalk from 'gitalk';
+import { renderGitalk } from '../lib/render-gitalk';
 import { siteConfig } from '../siteConfig';
 
 interface MomentCommentsProps {
@@ -18,18 +18,17 @@ export default function MomentComments({ id }: MomentCommentsProps) {
     // 清空重载，防止 React 严格模式下重复渲染
     containerRef.current.innerHTML = '';
 
-    const gitalk = new Gitalk({
+    renderGitalk({
       clientID: siteConfig.gitalkConfig.clientID,
-      clientSecret: siteConfig.gitalkConfig.clientSecret,
+      clientSecret: '',
       repo: siteConfig.gitalkConfig.repo,
       owner: siteConfig.gitalkConfig.owner,
       admin: siteConfig.gitalkConfig.admin,
+      proxy: '/api/github',
       // 截取前49个字符作为 GitHub Issue 的 Label（Gitalk 的要求）
       id: id.substring(0, 49),
       distractionFreeMode: false,
-    });
-
-    gitalk.render(containerRef.current);
+    }, containerRef.current);
   }, [id]);
 
   return (

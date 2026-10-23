@@ -1,0 +1,8 @@
+fastapi==0.143.3
+uvicorn==0.54.0
+python-multipart==0.0.32
+requests==2.34.2
+PyYAML==6.0.3
+Markdown==3.11.1
+markdownify==1.2.3
+httpx==0.28.1

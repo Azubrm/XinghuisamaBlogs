@@ -15,7 +15,7 @@ import { albums } from '../data/albums';
 import LyricBar from '../components/LyricBar';
 import { ToastProvider } from '../components/ToastProvider';
 
-import LatestPostsCarousel from '../components/LatestPostsCarousel';
+import RecentInspirationsCard from '../components/RecentInspirationsCard';
 import LatestChatterCarousel from '../components/LatestChatterCarousel';
 import DanmakuBackground from '../components/DanmakuBackground';
 
@@ -61,7 +61,6 @@ export default function Home() {
       });
     }
   } catch (e) {}
-  const top5Posts = allPosts.length > 0 ? allPosts.slice(0, 5) : [{ slug: 'none', title: '暂无文章', description: '快去写第一篇吧！', cover: siteConfig.defaultPostCover, date: '', formattedDate: '' }];
 
   const chattersDirectory = path.join(process.cwd(), 'chatters');
   let allChatters: any[] = [];
@@ -85,6 +84,14 @@ export default function Home() {
   const top5Chatters = allChatters.length > 0 ? allChatters.slice(0, 5) : [{ slug: 'none', title: '暂无记录', description: '记录一段思绪...', cover: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop', date: '', formattedDate: '' }];
 
   const chatterCount = allChatters.length;
+  const momentsDirectory = path.join(process.cwd(), 'moments');
+  let momentCount = 0;
+  try {
+    if (fs.existsSync(momentsDirectory)) {
+      momentCount = fs.readdirSync(momentsDirectory).filter(fileName => fileName.endsWith('.md')).length;
+    }
+  } catch (e) {}
+  const inspirationCount = allPosts.length + chatterCount + momentCount;
   const realPhotoCount = albums.reduce((total, album) => total + album.photos.length, 0);
   const latestAlbum = albums.length > 0 ? albums[0] : { id: '', title: '照片墙', description: '查看摄影', cover: siteConfig.photoWallImage, date: '' };
 
@@ -114,7 +121,7 @@ export default function Home() {
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full items-stretch">
                 <div className="md:col-span-4 h-full">
-                  <LatestPostsCarousel posts={top5Posts} />
+                  <RecentInspirationsCard total={inspirationCount} cover={siteConfig.defaultPostCover} />
                 </div>
                 <div className="md:col-span-8 flex flex-col gap-6 h-full">
                   <Link href="/photowall" className="flex-1 rounded-3xl bg-white/40 dark:bg-slate-800/50 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl overflow-hidden transition-all duration-700 hover:scale-[1.02] relative group min-h-[220px]">

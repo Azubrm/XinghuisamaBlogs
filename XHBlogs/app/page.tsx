@@ -15,7 +15,7 @@ import { albums } from '../data/albums';
 import LyricBar from '../components/LyricBar';
 import { ToastProvider } from '../components/ToastProvider';
 
-import LatestPostsCarousel from '../components/LatestPostsCarousel';
+import RecentInspirationsCard from '../components/RecentInspirationsCard';
 import LatestChatterCarousel from '../components/LatestChatterCarousel';
 import DanmakuBackground from '../components/DanmakuBackground';
 
@@ -61,7 +61,6 @@ export default function Home() {
       });
     }
   } catch (e) {}
-  const top5Posts = allPosts.length > 0 ? allPosts.slice(0, 5) : [{ slug: 'none', title: '暂无文章', description: '快去写第一篇吧！', cover: siteConfig.defaultPostCover, date: '', formattedDate: '' }];
 
   const chattersDirectory = path.join(process.cwd(), 'chatters');
   let allChatters: any[] = [];
@@ -85,6 +84,14 @@ export default function Home() {
   const top5Chatters = allChatters.length > 0 ? allChatters.slice(0, 5) : [{ slug: 'none', title: '暂无记录', description: '记录一段思绪...', cover: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop', date: '', formattedDate: '' }];
 
   const chatterCount = allChatters.length;
+  const momentsDirectory = path.join(process.cwd(), 'moments');
+  let momentCount = 0;
+  try {
+    if (fs.existsSync(momentsDirectory)) {
+      momentCount = fs.readdirSync(momentsDirectory).filter(fileName => fileName.endsWith('.md')).length;
+    }
+  } catch (e) {}
+  const inspirationCount = allPosts.length + chatterCount + momentCount;
   const realPhotoCount = albums.reduce((total, album) => total + album.photos.length, 0);
   const latestAlbum = albums.length > 0 ? albums[0] : { id: '', title: '照片墙', description: '查看摄影', cover: siteConfig.photoWallImage, date: '' };
 
@@ -114,12 +121,12 @@ export default function Home() {
               {/* 歌词栏 */}
               <div className="w-full mt-[-10px]"><LyricBar/></div>
 
-              {/* 第二行：文章轮播 + 照片墙 + 说说 + 主题切换 */}
+              {/* 第二行：最近灵感 + 照片墙 + 说说 + 主题切换 */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
 
-                {/* 左侧：文章轮播 (电脑端占4列，手机端排最上面) */}
+                {/* 左侧：最近灵感 (电脑端占4列，手机端排最上面) */}
                 <div className="col-span-1 lg:col-span-4 flex flex-col min-h-[300px]">
-                  <LatestPostsCarousel posts={top5Posts} />
+                  <RecentInspirationsCard total={inspirationCount} cover={siteConfig.defaultPostCover} />
                 </div>
 
                 {/* 右侧：组合面板 (电脑端占8列) */}

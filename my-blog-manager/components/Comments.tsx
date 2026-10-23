@@ -3,10 +3,9 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import 'gitalk/dist/gitalk.css';
-import Gitalk from 'gitalk';
+import { renderGitalk } from '../lib/render-gitalk';
 
-// 🌟 引入全局配置，读取你的 GitHub OAuth 凭证
-import { siteConfig } from '../siteConfig'; // 如果路径报错，请检查层级是否需要改成 '../../siteConfig'
+import { siteConfig } from '../siteConfig';
 
 export default function Comments() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -18,21 +17,18 @@ export default function Comments() {
     // 清空之前的评论区（防止 Next.js 路由切换时重复渲染）
     containerRef.current.innerHTML = '';
 
-    const gitalk = new Gitalk({
+    renderGitalk({
       clientID: siteConfig.gitalkConfig.clientID,
-      clientSecret: siteConfig.gitalkConfig.clientSecret,
+      clientSecret: '',
       repo: siteConfig.gitalkConfig.repo,
       owner: siteConfig.gitalkConfig.owner,
       admin: siteConfig.gitalkConfig.admin,
 
-      // 👇 指向我们自己的同源 API，彻底告别跨域和第三方拦截！
       proxy: '/api/github',
 
       id: (pathname.replace(/\/$/, '') || '/').substring(0, 49),
       distractionFreeMode: false,
-    });
-
-    gitalk.render(containerRef.current);
+    }, containerRef.current);
 
     // 👇 🌟 核心修复：擦除 URL 中的 OAuth 凭证，防止注销后二次登录失败
     const url = new URL(window.location.href);

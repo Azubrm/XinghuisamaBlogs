@@ -125,11 +125,18 @@ line two`,
         self.assertEqual(list(Path(self.directory.name).glob(".siteConfig-*.tmp")), [])
 
     def test_single_admin_shorthand_is_serialized_safely(self):
-        updates = {"gitalkConfig": {"admin": 'one "quoted" user', "clientID": "new-id", "clientSecret": 'a } brace "'}}
+        updates = {"gitalkConfig": {"admin": 'one "quoted" user', "clientID": "new-id", "clientSecret": ''}}
         self.assertTrue(config.update_site_config({"updates": updates})["success"])
         data = config.get_site_config()["data"]["gitalkConfig"]
         self.assertEqual(data["admin"], ['one "quoted" user'])
         self.assertEqual(updates["gitalkConfig"]["admin"], 'one "quoted" user')
+
+    def test_comment_secret_is_not_returned_or_saved_to_public_config(self):
+        self.assertEqual(config.get_site_config()["data"]["gitalkConfig"]["clientSecret"], "")
+        original = self.path.read_text(encoding="utf-8")
+        result = config.update_site_config({"updates": {"gitalkConfig": {"clientID": "id", "clientSecret": "should-stay-private"}}})
+        self.assertFalse(result["success"])
+        self.assertEqual(self.path.read_text(encoding="utf-8"), original)
 
 
 if __name__ == "__main__":

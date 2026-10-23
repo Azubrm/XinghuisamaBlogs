@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOperations } from '../../context/OperationContext';
 import { siteConfig } from '../../siteConfig';
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import { ToastProvider, useToast } from '../../components/ToastProvider';
+import { extractNeteaseSongId } from '../../lib/netease-song';
 
 import ProfileSection from '../../components/settings/ProfileSection';
 import BackgroundSection from '../../components/settings/BackgroundSection';
@@ -56,6 +57,7 @@ function SettingsContent() {
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryResult, setQueryResult] = useState<any>(null);
   const [musicDetails, setMusicDetails] = useState<Record<string, any>>({});
+  const musicQueryVersion = useRef(0);
 
   useEffect(() => {
     const fetchRealConfig = async () => {
@@ -67,7 +69,6 @@ function SettingsContent() {
         const data = await res.json();
 
         if (data.success && data.data) {
-          console.log("✅ 成功从后端拉取到真实配置:", data.data);
           setFormData((prev: any) => ({
             ...prev,
             ...data.data,
@@ -94,6 +95,14 @@ function SettingsContent() {
   }, []);
 
   const handleUpdate = (field: string, value: any) => {
+    if (field === 'newMusicId') {
+      const input = String(value ?? '');
+      musicQueryVersion.current += 1;
+      setQueryResult(null);
+      setQueryLoading(false);
+      setFormData((prev: any) => ({ ...prev, newMusicId: extractNeteaseSongId(input) ?? input }));
+      return;
+    }
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
@@ -101,7 +110,7 @@ function SettingsContent() {
     try {
       const configRes = await fetch(`/backend_config.json?t=${Date.now()}`);
       const configData = await configRes.json();
-      const res = await fetch(`http://127.0.0.1:${configData.api_port}/api/music/query/${id}`, { cache: 'no-store' });
+      const res = await fetch(`http://127.0.0.1:${configData.api_port}/api/music/query/${encodeURIComponent(id)}`, { cache: 'no-store' });
       const data = await res.json();
       return data.success ? data.data : { error: true, id, name: "查询失败或无版权" };
     } catch (error) {
@@ -130,16 +139,21 @@ function SettingsContent() {
   }, [formData.cloudMusicIds]);
 
   const queryMusic = async () => {
-    if (!formData.newMusicId) {
-      showToast("ID不能为空哦", "warning");
+    const input = String(formData.newMusicId ?? '').trim();
+    const songId = extractNeteaseSongId(input);
+    if (!songId) {
+      showToast(input ? "未识别到歌曲 ID，请输入数字 ID 或网易云歌曲完整链接" : "请输入歌曲 ID 或网易云歌曲链接", "warning");
       return;
     }
+    const queryVersion = ++musicQueryVersion.current;
+    setFormData((prev: any) => ({ ...prev, newMusicId: songId }));
     setQueryLoading(true);
     setQueryResult(null);
 
-    const info = await fetchMusicDetail(formData.newMusicId);
+    const info = await fetchMusicDetail(songId);
+    if (queryVersion !== musicQueryVersion.current) return;
     if (info && !info.error) {
-      setQueryResult(info);
+      setQueryResult({ ...info, id: songId });
       showToast("获取成功！", "success");
     } else {
       showToast(info?.name || "未找到该歌曲", "error");
@@ -157,6 +171,11 @@ function SettingsContent() {
   const confirmAddMusic = () => {
     if (!queryResult) return;
     const targetId = String(queryResult.id);
+    if (extractNeteaseSongId(String(formData.newMusicId ?? '')) !== targetId) {
+      setQueryResult(null);
+      showToast("歌曲输入已变化，请重新查询后再添加", "warning");
+      return;
+    }
     const exists = formData.cloudMusicIds.some((id: string | number) => String(id) === targetId);
 
     if (exists) {

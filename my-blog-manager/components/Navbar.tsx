@@ -56,7 +56,6 @@ export default function Navbar() {
   // 🌟 这里新增了 /tree 路由
   const navLinks = [
     { name: '首页', href: '/' },
-    { name: '项目', href: '/projects' },
     { name: '归档', href: '/timeline' },
     { name: '照片墙', href: '/photowall' },
     { name: '音乐', href: '/music' },
